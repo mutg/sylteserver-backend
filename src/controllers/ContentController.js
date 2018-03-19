@@ -1,4 +1,5 @@
 const { Track } = require('../models')
+const scanner = require('../scanner')
 const multer = require('multer')
 const storage = multer.diskStorage({
   destination: 'content/tracks/',
@@ -22,12 +23,30 @@ var upload = multer(
 )
 .any()
 
+var isScanning = false
 
 module.exports = {
   async getTracks(req, res) {
-    await Track.findAll({where: req.query})
+    var query = {
+      where: {
+      },
+      order: [
+        [(req.query.order) ? req.query.order : 'id',
+        req.query.dir ? req.query.dir : 'DESC']
+      ],
+      limit: null,
+      offset: null
+    }
+
+    if (req.query.title) query.where.title = req.query.title
+    if (req.query.uri) query.where.uri = req.query.uri
+
+    await Track.findAll(query)
     .then (tracks => {
       res.json(tracks)
+    })
+    .catch(error => {
+      console.log(error)
     })
   },
   async uploadTracks(req, res) {
@@ -74,5 +93,22 @@ module.exports = {
         }
       }
     })
+  },
+  async scanForTracks(req, res) {
+    
+    if (isScanning) {
+      return res.status(400).send({
+        error: 'Scan in progress'
+      })
+    }
+    try {
+      isScanning = true      
+      var newTracks = await scanner.scan()
+      res.json({count: newTracks.length})
+    } catch (error) {
+      res.status(403).send({error: error.toString()})
+    } finally {
+      isScanning = false
+    }
   }
 }

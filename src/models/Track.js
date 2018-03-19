@@ -1,5 +1,6 @@
 const slug = require('slug')
 const createWaveformJSON = require('../createWaveformJSON')
+const colors = require('../colors')
 const mp3Duration = require('mp3-duration')
 
 function getDuration(track) {
@@ -14,6 +15,7 @@ function getDuration(track) {
 
 function processTrack (track, options) {
     track.setDataValue('uri', slug(track.title))
+    track.setDataValue('color', colors.getRandomColor())
     return createWaveformJSON(__dirname + '/../../content/tracks/' + track.filename)
             .then((buf) => {
                 track.setDataValue('data', JSON.parse(buf.toString()))
@@ -21,6 +23,7 @@ function processTrack (track, options) {
             })
             .then(duration => {
                 track.setDataValue('duration', duration)
+                
             })
 }
 
@@ -54,6 +57,10 @@ module.exports = (sequelize, DataTypes) => {
         plays: {
             type: DataTypes.INTEGER,
             defualtValue: 0
+        },
+        color: {
+            type: DataTypes.STRING,
+            defaultValue: '#000000'
         }
     }, {
         hooks: {

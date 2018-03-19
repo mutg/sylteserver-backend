@@ -18,4 +18,7 @@ module.exports = (app) => {
         isAuthenticated,
         AuthenticationController.session
     )
+    app.post('/scan',
+        isAuthenticated,
+        ContentController.scanForTracks)
 }
