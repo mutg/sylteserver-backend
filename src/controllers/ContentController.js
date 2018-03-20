@@ -25,6 +25,15 @@ var upload = multer(
 
 var isScanning = false
 
+function ScanObject() {
+  this.complete = false
+  this.started = Date.now()
+  this.ended = Date.now()
+  this.tracks = []  
+}
+
+var scanObject
+
 module.exports = {
   async getTracks(req, res) {
     var query = {
@@ -75,7 +84,7 @@ module.exports = {
             })
             promises.push(p)
           }
-
+          
           Promise.all(promises)
           .then(() => {
             res.send('Upload successful')
@@ -95,20 +104,32 @@ module.exports = {
     })
   },
   async scanForTracks(req, res) {
-    
     if (isScanning) {
       return res.status(400).send({
         error: 'Scan in progress'
       })
     }
-    try {
-      isScanning = true      
-      var newTracks = await scanner.scan()
-      res.json({count: newTracks.length})
-    } catch (error) {
-      res.status(403).send({error: error.toString()})
-    } finally {
-      isScanning = false
+    scanObject = new ScanObject()
+    isScanning = true      
+    scanObject.tracks = await scanner.scan()
+    res.status(200).send(scanObject)
+    await Track.bulkCreate(scanObject.tracks.map( filename => {
+      var robj = {}
+      robj['filename'] = filename
+      robj['title'] = filename.slice(0, -4)
+      return robj
+    }),
+    {
+        individualHooks: true
+    })
+    isScanning = false
+    scanObject.complete = true
+    scanObject.ended = Date.now()
+  },
+  async getScanStatus(req, res) {
+    if (!scanObject) {
+      return res.status(404).send()
     }
+    res.status(200).send(scanObject)
   }
 }

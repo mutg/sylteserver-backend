@@ -20,16 +20,7 @@ module.exports = {
                     newFiles.push(filename)
                 }
             })
-            
-            return Track.bulkCreate(newFiles.map( filename => {
-                var robj = {}
-                robj['filename'] = filename
-                robj['title'] = filename.slice(0, -4)
-                return robj
-            }),
-            {
-                individualHooks: true
-            })
+            return newFiles
         })
     }
 }

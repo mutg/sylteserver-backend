@@ -21,4 +21,7 @@ module.exports = (app) => {
     app.post('/scan',
         isAuthenticated,
         ContentController.scanForTracks)
+    app.get('/scan/status',
+        isAuthenticated,
+        ContentController.getScanStatus)
 }
