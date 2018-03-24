@@ -25,14 +25,24 @@ var upload = multer(
 
 var isScanning = false
 
-function ScanObject() {
+function ScanStatus() {
   this.complete = false
   this.started = Date.now()
   this.ended = Date.now()
   this.tracks = []  
 }
 
-var scanObject
+function ProcessingStatus() {
+  this.complete = false
+  this.started = Date.now()
+  this.ended = Date.now()
+  this.tracks = {}
+  this.id = processingId++
+}
+
+var processingId = 0
+var processing = {}
+var scanStatus
 
 module.exports = {
   async getTracks(req, res) {
@@ -65,34 +75,58 @@ module.exports = {
           error: err.toString()
         })
       } else {
-        
         try {
           let trackdata = JSON.parse(req.body.data)
           let tracks = req.files
+
+          var uploadStatus = new ProcessingStatus()
+
           
-          console.log(tracks) 
-          console.log(trackdata) 
-
-          var promises = []
-
-          for (let x = 0; x < tracks.length; x++) {
-            const track =tracks[x]
-            let p = Track.create({
-              filename: track.originalname,
-              title: trackdata[track.originalname].title,
-              description: trackdata[track.originalname].description
-            })
-            promises.push(p)
+          for (const trackKey in trackdata) {
+            if (trackdata.hasOwnProperty(trackKey)) {
+              const track = trackdata[trackKey]
+              var obj = {
+                title: track.title,
+                status: {
+                  done: false,
+                  error: null
+                }
+              }
+              uploadStatus.tracks[track.title] = obj              
+            }
           }
-          
-          Promise.all(promises)
-          .then(() => {
-            res.send('Upload successful')
-          })
-          .catch( err =>  {
-            res.status(400).send({
-              error: err.toString()
+
+          processing[uploadStatus.id] = uploadStatus
+
+          // CLIENT GETS RESPONSE
+          res.status(202).send(
+            {
+              upload_id: uploadStatus.id 
+            }
+          )
+
+          Promise.all(tracks.map(t => {
+            var title = trackdata[t.originalname].title
+            return Track.create({
+              filename: t.originalname,
+              title: title,
+              description: trackdata[t.originalname].description
             })
+            .then(trackInstance => {
+              uploadStatus.tracks[title].status.done = true
+              uploadStatus.tracks[title].status.uri = trackInstance.uri
+            })
+            .catch(error => {
+              uploadStatus.tracks[title].status.done = true
+              uploadStatus.tracks[title].status.error = error
+            })
+          }))
+          .then(() => {
+            uploadStatus.complete = true
+            uploadStatus.ended = Date.now()
+          })
+          .catch(err =>  {
+            console.log(err)
           })
 
         } catch (error) {
@@ -103,17 +137,27 @@ module.exports = {
       }
     })
   },
+  async getUploadStatus(req, res) {
+    var id = req.params.upload_id
+    try {
+      res.json(processing[id])
+    } catch (error) {
+      res.json(400).send({
+        error: error.toString()
+      })      
+    }
+  },
   async scanForTracks(req, res) {
     if (isScanning) {
       return res.status(400).send({
         error: 'Scan in progress'
       })
     }
-    scanObject = new ScanObject()
+    scanStatus = new ScanStatus()
     isScanning = true      
-    scanObject.tracks = await scanner.scan()
-    res.status(200).send(scanObject)
-    await Track.bulkCreate(scanObject.tracks.map( filename => {
+    scanStatus.tracks = await scanner.scan()
+    res.status(200).send(scanStatus)
+    await Track.bulkCreate(scanStatus.tracks.map( filename => {
       var robj = {}
       robj['filename'] = filename
       robj['title'] = filename.slice(0, -4)
@@ -123,13 +167,13 @@ module.exports = {
         individualHooks: true
     })
     isScanning = false
-    scanObject.complete = true
-    scanObject.ended = Date.now()
+    scanStatus.complete = true
+    scanStatus.ended = Date.now()
   },
   async getScanStatus(req, res) {
-    if (!scanObject) {
+    if (!scanStatus) {
       return res.status(404).send()
     }
-    res.status(200).send(scanObject)
+    res.status(200).send(scanStatus)
   }
 }

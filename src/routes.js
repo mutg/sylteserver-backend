@@ -11,17 +11,22 @@ module.exports = (app) => {
         AuthenticationController.login)
     app.get('/tracks',
         ContentController.getTracks)
-    app.post('/tracks',
+    app.post('/tracks/upload/',
         isAuthenticated,
         ContentController.uploadTracks)
+    app.get('/tracks/upload/:upload_id', 
+        isAuthenticated,
+        ContentController.getUploadStatus)
     app.post('/session',
         isAuthenticated,
         AuthenticationController.session
     )
     app.post('/scan',
         isAuthenticated,
-        ContentController.scanForTracks)
+        ContentController.scanForTracks
+    )
     app.get('/scan/status',
         isAuthenticated,
-        ContentController.getScanStatus)
+        ContentController.getScanStatus
+    )
 }
