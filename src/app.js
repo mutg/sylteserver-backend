@@ -18,7 +18,7 @@ const createAdminAccount = function () {
     User.create({
         username: 'admin',
         password: 'admin',
-        admin: true
+        isAdmin: true
     })
 }
 
@@ -28,4 +28,3 @@ sequelize.sync({force: true})
         app.listen(config.port)
         console.log(`Server started, port ${config.port}`)
     })
-

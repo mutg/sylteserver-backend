@@ -106,19 +106,19 @@ module.exports = {
           )
 
           Promise.all(tracks.map(t => {
-            var title = trackdata[t.originalname].title
+            var data = trackdata[t.originalname]
             return Track.create({
               filename: t.originalname,
-              title: title,
-              description: trackdata[t.originalname].description
+              title: data.title,
+              description: data.description
             })
             .then(trackInstance => {
-              uploadStatus.tracks[title].status.done = true
-              uploadStatus.tracks[title].status.uri = trackInstance.uri
+              uploadStatus.tracks[data.title].status.done = true
+              uploadStatus.tracks[data.title].status.uri = trackInstance.uri
             })
             .catch(error => {
-              uploadStatus.tracks[title].status.done = true
-              uploadStatus.tracks[title].status.error = error
+              uploadStatus.tracks[data.title].status.done = true
+              uploadStatus.tracks[data.title].status.error = error.toString()
             })
           }))
           .then(() => {
